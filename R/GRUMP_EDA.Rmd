@@ -1,0 +1,83 @@
+---
+title: "GRUMP_EDA"
+author: "Ziyue Zheng"
+date: "2025-12-10"
+output: html_document
+---
+
+```{r}
+grump_data <- read_csv("./02-Data/GRUMP_data.csv")
+```
+
+
+# Summarize the GRUMP dataset
+There are *n = 1210* samples and *d = 2026* species in total among all samples. Each sample contains a small subset of all species. So, the data is very sparse. 
+```{r}
+length(unique(grump_data$SampleID))
+
+length(unique(grump_data$Species))
+```
+
+Let's extra the relative abundance(Our Y) first. *df_long* is a long datafame have three columns: SampleID, Species and Relative_Abundance. *df_wide* is a matrix-like dataframe which one row represent a sample and one column represent one specie. 
+```{r}
+df_long <- grump_data %>%
+  group_by(SampleID,Species) %>%
+  summarise(Relative_Abundance = sum(Relative_Abundance),
+            .groups = "drop") %>%
+  mutate(Species = if_else(Species == "", "unknown", Species)) 
+
+df_wide <- df_long %>%
+  pivot_wider(
+    id_cols = SampleID,
+    names_from  = Species,
+    values_from = Relative_Abundance
+  )
+df_wide[is.na(df_wide)] <- 0
+
+head(df_long)
+
+head(df_wide)
+```
+
+The data is very sparse. For example, sample 1 has 1956 species that relative abundance is 0. And the data is highly concentrated. If we take the column sum, we can see the top 20 species contribute almost 80% relative abundance.
+```{r}
+sum(df_wide[1,] == 0)
+
+sample1 <- colSums(df_wide[,-1])
+summary(sample1)
+
+sort(sample1,decreasing = TRUE)[1:20]
+
+
+df_pie <- data.frame(
+  species = names(sample1),
+  value   = as.numeric(sample1)
+)
+ggplot(df_pie, aes(x = "", y = value, fill = species)) +
+  geom_col(width = 0.1, colour = NA) + 
+  coord_polar(theta = "y") +
+  theme_void() +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "white"))
+```
+
+
+
+Visualize the dataframe
+```{r}
+ggplot(df_long, aes(x = Species, y = SampleID, fill = Relative_Abundance)) +
+  geom_raster()+
+  scale_fill_gradient(
+    low = "white",     # color for 0
+    high = "blue",
+    limits = c(-1, 1),
+    na.value = "white"
+  ) + theme_minimal() +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+```
+
