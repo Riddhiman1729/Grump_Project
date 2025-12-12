@@ -81,3 +81,17 @@ ggplot(df_long, aes(x = Species, y = SampleID, fill = Relative_Abundance)) +
   )
 ```
 
+
+```{r}
+df_time_lat <- grump_data %>% 
+  group_by(SampleID,Species) %>%
+  summarise(time = min(time),
+            lat = mean(lat),
+            depth =mean(depth),
+            .groups = "drop") %>%
+  mutate(Species = if_else(Species == "", "unknown", Species)) 
+```
+
+```{r}
+df_combined = left_join(df_wide, df_time_lat, by="SampleID")
+```
