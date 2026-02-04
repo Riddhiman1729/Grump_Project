@@ -1,5 +1,6 @@
 # Generate a mixture of dirichlet dataset
 library(MCMCpack)
+library(fda)
 
 # Helper: Log dirichlet density function(stable)
 log_dirichlet <- function(X, alpha) {
@@ -56,17 +57,19 @@ solve_multinom <- function(y, X, lambda = 0){
 
 # Helper: base spline
 solve_spline <- function(s){
-  if(ncols == 1){
+  if(ncol(s) == 1){
+    basis <- create.bspline.basis(range(s), nbasis = 4, norder = 3)
+    B <- eval.basis(s,basis)
+    B <- scale(B, center=TRUE, scale=FALSE)
     
   }else if(ncol(s) == 2){
     s1 <- s[,1]
     s2 <- s[,2]
-    basis1 <- create.bspline.basis(range(s1), nbasis=3, norder=4)
-    basis2 <- create.bspline.basis(range(s2), nbasis=3, norder=4)
+    basis1 <- create.bspline.basis(range(s1), nbasis=4, norder=3)
+    basis2 <- create.bspline.basis(range(s2), nbasis=4, norder=3)
     
     B1 <- eval.basis(s1, basis1)
     B2 <- eval.basis(s2, basis2)
-    
     # center columns to avoid intercept-like duplication
     B1 <- scale(B1, center=TRUE, scale=FALSE)
     B2 <- scale(B2, center=TRUE, scale=FALSE)

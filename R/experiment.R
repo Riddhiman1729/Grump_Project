@@ -1,22 +1,36 @@
 #### Synthetic data experiment (DGPs) ####
+# Only X
 X <- matrix(c(rnorm(100,1,0.05),
               c(rep(1,50),rep(0,50)),
               sin(seq(0.1,10,0.1))) , ncol = 3)
-s <- matrix(c(seq(0.1,10,0.1),
-              runif(100,0,1)),ncol = 2)
 beta <- matrix(c(0.5,1,2,
                  1,2,1,
                  2,0.5,0), ncol = 3) # K=3
-eta <- X %*% beta # + ( s[,1]^(1/5) - s[,2]^(1/3) + 0.5 * sin(s[,1]) + 0.5 * cos(s[,2]) )  # spacial covariates
+eta <- X %*% beta 
 pi <- mclust::softmax(eta)
 theta <- matrix(runif(30,0,10),ncol = 3) # d = 10
 z <- apply(pi , 1, function(prob) sample.int(3, size = 1, prob = prob) )
 Y <- t(sapply(z, function(k) rdirichlet(1, theta[, k])))
 
+# Both s and X
+s <- matrix(c(seq(0.1,10,0.1),
+              runif(100,0,1)),ncol = 2)
+g1 <-  0.1*sin(s[,1]) + 0.8*s[,2]^2 - 0.3*s[,1]*s[,2]
+g2 <- -0.7*cos(s[,2]) + 0.2*s[,2]^3
+g3 <-  0.2*sin(s[,1] + 2*s[,2]) + exp(-s[,1]^2)
+eta_full <- X %*% beta + cbind(g1,g2,g3)  # spacial covariates
+pi_full <- mclust::softmax(eta_full)
+theta_full <- matrix(runif(30,0,10),ncol = 3) # d = 10
+z_full <- apply(pi_full , 1, function(prob) sample.int(3, size = 1, prob = prob) )
+Y_full <- t(sapply(z_full, function(k) rdirichlet(1, theta_full[, k])))
+
+
+
 #### Real GRUMP data experiment ####
 # load(file = "./relative_abund.Rdata")
 # 
 # df_wide_mat <- as.matrix(df_wide[,-1])
+
 
 
 
@@ -26,23 +40,23 @@ Y <- t(sapply(z, function(k) rdirichlet(1, theta[, k])))
 # res3 <- EM_dirichlet(df_wide_mat+1e-10,nclust = 3,max_iter = 100)
 
 # On simulated data
-res <- EM_dirichlet(Y,nclust = 3,max_iter = 100, regress = FALSE) # without regression
+# without regression
+res <- EM_dirichlet(Y,nclust = 3,max_iter = 100, regress = FALSE) 
 t(theta)
-res$theta # theta estimated well
+res$theta # theta are well estimated 
 
-res_regress_X <- EM_dirichlet(Y = Y, X = X, nclust = 3, max_iter = 100, regress = TRUE)
-t(theta)
-res_regress_X$theta # theta estimated well again.
-plot(pi[,3],type = "l")
-lines(res_regress_X$pi[,2],col="red")
-plot(pi[,1],type = "l")
-lines(res_regress_X$pi[,1],col="red")
-
-
-
+# regression with X
 res_regress <- EM_dirichlet(Y = Y, X = X, nclust = 3, max_iter = 500, regress = TRUE)
 res_regress$beta
 beta
-plot(pi[,3],type = "l")
-lines(res_regress$pi[,3],col="red")
+plot(pi[,3],type = "l",ylim = c(0,1))
+lines(res_regress$pi[,3],col="red") # pi are well estimated but not the beta
+res_regress$theta 
+theta # theta are also well estimated
 
+# regression with X and s
+res_regress_full <- EM_dirichlet(Y = Y_full, X = X, s = s, nclust = 3, max_iter = 500, regress = TRUE)
+plot(pi_full[,3],type = "l",ylim = c(0,1))
+lines(res_regress_full$pi[,2],col="blue") # The pi estimated well but not the beta again
+res_regress_full$theta
+theta_full # theta are well estimated
