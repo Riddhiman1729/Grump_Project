@@ -139,7 +139,7 @@ m_step <- function(Y, X = NULL, s = NULL, resp, theta, regress = FALSE){
   # Update pi and beta
   if(!regress){
     Nk <- colSums(resp)
-    pi_new <- matrix(rep(Nk/n,50),ncol = 2,byrow = TRUE)
+    pi_new <- matrix(rep(Nk/n,n),ncol = K,byrow = TRUE)
     beta = NULL
   }else{
     if(is.null(X)){
