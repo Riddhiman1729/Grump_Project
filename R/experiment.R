@@ -1,15 +1,17 @@
 #### Synthetic data experiment (DGPs) ####
 # Only X
-X <- matrix(c(rnorm(100,1,0.05),
-              c(rep(1,50),rep(0,50)),
-              sin(seq(0.1,10,0.1))) , ncol = 3)
-beta <- matrix(c(0.5,1,2,
-                 1,2,1,
-                 2,0.5,0), ncol = 3) # K=3
-eta <- X %*% beta 
+X <- matrix(c(cos(seq(0,2*3.14,0.05)), # Represent -temperature
+              -cos(seq(0,4*3.14,0.1))), # Represent salinity
+            ncol = 2)
+beta <- matrix(c(2,0, # prototype 1 sensitive to temperature
+                 0,2, # prototype 2 sensitive to salinity
+                 2,2), # prototype 3 sensitive to both
+               ncol = 3) # K=3
+eta <- X %*% beta
 pi <- mclust::softmax(eta)
-theta <- matrix(runif(30,0,10),ncol = 3) # d = 10
-z <- apply(pi , 1, function(prob) sample.int(3, size = 1, prob = prob) )
+d = 10
+theta <- matrix(runif(d * ncol(beta), 0 , d),ncol = ncol(beta)) # d = 10
+z <- apply(pi , 1, function(prob) sample.int(length(prob), size = 1, prob = prob) )
 Y <- t(sapply(z, function(k) rdirichlet(1, theta[, k])))
 
 # Both s and X
@@ -49,8 +51,10 @@ res$theta # theta are well estimated
 res_regress <- EM_dirichlet(Y = Y, X = X, nclust = 3, max_iter = 500, regress = TRUE)
 res_regress$beta
 beta
-plot(pi[,3],type = "l",ylim = c(0,1))
-lines(res_regress$pi[,3],col="red") # pi are well estimated but not the beta
+for(i in 1:3){
+  plot(pi[,i],type = "l",ylim = c(0,1))
+  lines(res_regress$pi[,i],col="red") # pi are well estimated but not the beta
+}
 res_regress$theta 
 theta # theta are also well estimated
 
