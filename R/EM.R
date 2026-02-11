@@ -45,12 +45,20 @@ digamma_inv <- function(x) {
 
 
 # Helper: solve multinomial glm
-solve_multinom <- function(y, X, lambda = 0){
+solve_multinom <- function(y, X, lambda = 0, pf = NULL){
+  if(is.null(pf)){
+    pf <- rep(0,ncol(X))
+  }
+  
   fit <- glmnet::glmnet(x = X,
                         y = y,
                         family = "multinomial",
+                        alpha = 0, # L2 penalty
+                        lambda = lambda,
+                        penalty.factor = pf, # 0 = unpenalized, 1 = penalized 
                         intercept = TRUE)
   coefs = glmnet::coef.glmnet(fit, s = lambda)
+  
   return(as.matrix(do.call(cbind, coefs)))
 }
 
@@ -132,7 +140,7 @@ e_step <- function(Y, pi , theta){
 
 
 # Mstep: update the parameters
-m_step <- function(Y, X = NULL, s = NULL, resp, theta, regress = FALSE){
+m_step <- function(Y, X = NULL, s = NULL, lambda = 0, resp, theta, regress = FALSE){
   n <- nrow(Y)
   K <- ncol(resp)
   
@@ -155,8 +163,10 @@ m_step <- function(Y, X = NULL, s = NULL, resp, theta, regress = FALSE){
       print("Spatial covariates dimension error")
     }
     
-    # only X corvariates
-    beta = solve_multinom(y = resp, X = X_full)
+    pf <- rep(1,ncol(X_full))
+    pf[1:ncol(X)] <- 0 # Penalize s-coefs, not penalize X-coefs
+    
+    beta = solve_multinom(y = resp, X = X_full, lambda = lambda, pf = pf)
     pi_new_mat = as.matrix(exp(cbind(1,X_full) %*% beta))
     pi_new <- pi_new_mat / rowSums(pi_new_mat)
     # X + f(s)
@@ -176,18 +186,19 @@ m_step <- function(Y, X = NULL, s = NULL, resp, theta, regress = FALSE){
 }
 
 
-# EM function
+# EM functionß
 EM_dirichlet <- function(Y,
                          X = NULL,
                          s = NULL,
                          nclust = 2,
+                         lambda = 0,
                          max_iter = 1000,
                          tol = 1e-6,
                          regress = FALSE,
                          verbose = FALSE){
   n <- nrow(Y)
   d <- ncol(Y)
-  K <- nclust
+  K <- nclusts
   
   # Initialization
   pi <- matrix(rep(1/K , K * n), nrow = n)
@@ -205,7 +216,7 @@ EM_dirichlet <- function(Y,
     resp <- e_step(Y, pi, theta)
     
     # M step
-    mstep_res <- m_step(Y = Y, X = X, s = s, resp , theta, regress = regress)
+    mstep_res <- m_step(Y = Y, X = X, s = s, resp = resp, theta = theta, lambda = lambda, regress = regress)
     pi_new <- mstep_res$pi
     beta_new <- mstep_res$beta
     theta_new <- mstep_res$theta
